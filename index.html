@@ -1,0 +1,456 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>优化版动态卡片管理器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        /* 左侧输入区域 */
+        .left-panel {
+            width: 40%;
+            padding: 20px;
+            background-color: #ffffff;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .input-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .input-section textarea {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            resize: vertical;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: border-color 0.3s;
+        }
+        
+        .input-section textarea:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+        
+        .card-form {
+            margin-top: 10px;
+        }
+        
+        .card-form input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .btn {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #357ae8;
+        }
+        
+        .btn-add {
+            background-color: #5cb85c;
+        }
+        
+        .btn-add:hover {
+            background-color: #4cae4c;
+        }
+        
+        /* 右侧卡片列表 */
+        .right-panel {
+            width: 60%;
+            padding: 20px;
+            background-color: #f9f9f9;
+            overflow-y: auto;
+        }
+        
+        .card-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            position: relative;
+            min-height: 80px;
+            border-left: 4px solid #4a90e2;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-content {
+            padding: 10px 0 30px 0; /* 增加底部空间以容纳按钮 */
+            font-size: 15px;
+            line-height: 1.6;
+            color: #333;
+            word-break: break-word;
+        }
+        
+        .card-actions {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn {
+            background: none;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 50px;
+        }
+        
+        .edit-btn {
+            color: #4a90e2;
+        }
+        
+        .copy-btn {
+            color: #5cb85c;
+        }
+        
+        .delete-btn {
+            color: #d9534f;
+        }
+        
+        .action-btn:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .edit-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #4a90e2;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        
+        .edit-actions {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .placeholder-info {
+            background-color: #e7f3ff;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #555;
+        }
+        
+        .placeholder-info strong {
+            color: #4a90e2;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #5cb85c;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        .notification.show {
+            opacity: 1;
+        }
+        
+        .card-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧输入区域 -->
+        <div class="left-panel">
+            <div class="input-section">
+                <h2>主输入内容</h2>
+                <textarea id="mainInput" placeholder="在这里输入要插入到卡片中的内容..."></textarea>
+                
+                <div class="placeholder-info">
+                    <p>使用方式：</p>
+                    <p>在卡片中使用 <strong>{{input}}</strong> 作为占位符</p>
+                    <p>例如: "今天天气真好，{{input}} 让人心情愉快"</p>
+                </div>
+            </div>
+            
+            <div class="card-form">
+                <h3>添加新卡片</h3>
+                <input type="text" id="newCardText" placeholder="输入卡片内容，使用 {{input}} 作为占位符...">
+                <button class="btn btn-add" id="addCardBtn">添加卡片</button>
+            </div>
+        </div>
+        
+        <!-- 右侧卡片列表 -->
+        <div class="right-panel">
+            <h2>卡片列表</h2>
+            <div class="card-list" id="cardList">
+                <!-- 卡片将通过JavaScript动态添加 -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification">已复制到剪贴板！</div>
+
+    <script>
+        // 数据存储
+        let cards = JSON.parse(localStorage.getItem('cards')) || [];
+        let mainInputValue = localStorage.getItem('mainInput') || '';
+        
+        // DOM元素获取
+        const mainInputEl = document.getElementById('mainInput');
+        const newCardTextEl = document.getElementById('newCardText');
+        const addCardBtn = document.getElementById('addCardBtn');
+        const cardListEl = document.getElementById('cardList');
+        const notificationEl = document.getElementById('notification');
+        
+        // 初始化
+        mainInputEl.value = mainInputValue;
+        renderCards();
+        
+        // 主输入内容变化事件
+        mainInputEl.addEventListener('input', function() {
+            mainInputValue = this.value;
+            localStorage.setItem('mainInput', mainInputValue);
+            updateAllCards();
+        });
+        
+        // 添加卡片按钮事件
+        addCardBtn.addEventListener('click', addNewCard);
+        
+        // 回车键添加卡片
+        newCardTextEl.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addNewCard();
+            }
+        });
+        
+        // 添加新卡片函数
+        function addNewCard() {
+            const text = newCardTextEl.value.trim();
+            if (!text) return;
+            
+            const newCard = {
+                id: Date.now(),
+                text: text,
+                isEditing: false
+            };
+            
+            cards.push(newCard);
+            saveCards();
+            renderCards();
+            newCardTextEl.value = '';
+        }
+        
+        // 渲染所有卡片
+        function renderCards() {
+            cardListEl.innerHTML = '';
+            
+            cards.forEach(card => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'card';
+                cardEl.dataset.id = card.id;
+                
+                if (card.isEditing) {
+                    cardEl.innerHTML = `
+                        <input type="text" class="edit-input" value="${card.text}">
+                        <div class="edit-actions">
+                            <button class="action-btn save-btn">保存</button>
+                            <button class="action-btn cancel-btn">取消</button>
+                        </div>
+                    `;
+                    
+                    // 绑定编辑相关事件
+                    const editInput = cardEl.querySelector('.edit-input');
+                    const saveBtn = cardEl.querySelector('.save-btn');
+                    const cancelBtn = cardEl.querySelector('.cancel-btn');
+                    
+                    saveBtn.addEventListener('click', () => saveEdit(card.id, editInput.value));
+                    cancelBtn.addEventListener('click', () => cancelEdit(card.id));
+                    
+                    editInput.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            saveEdit(card.id, editInput.value);
+                        }
+                    });
+                } else {
+                    // 替换占位符
+                    const displayText = replacePlaceholders(card.text);
+                    
+                    cardEl.innerHTML = `
+                        <div class="card-content">${displayText}</div>
+                        <div class="card-actions">
+                            <button class="action-btn edit-btn">编辑</button>
+                            <button class="action-btn copy-btn">复制</button>
+                            <button class="action-btn delete-btn">删除</button>
+                        </div>
+                    `;
+                    
+                    // 绑定卡片操作事件
+                    cardEl.querySelector('.edit-btn').addEventListener('click', () => startEdit(card.id));
+                    cardEl.querySelector('.copy-btn').addEventListener('click', () => copyToClipboard(displayText));
+                    cardEl.querySelector('.delete-btn').addEventListener('click', () => deleteCard(card.id));
+                }
+                
+                cardListEl.appendChild(cardEl);
+            });
+        }
+        
+        // 替换占位符
+        function replacePlaceholders(text) {
+            return text.replace(/\{\{input\}\}/g, mainInputValue);
+        }
+        
+        // 更新所有卡片显示
+        function updateAllCards() {
+            document.querySelectorAll('.card').forEach(cardEl => {
+                const cardId = parseInt(cardEl.dataset.id);
+                const card = cards.find(c => c.id === cardId);
+                
+                if (card && !card.isEditing) {
+                    const displayText = replacePlaceholders(card.text);
+                    cardEl.querySelector('.card-content').innerHTML = displayText;
+                }
+            });
+        }
+        
+        // 开始编辑卡片
+        function startEdit(cardId) {
+            const card = cards.find(c => c.id === cardId);
+            if (card) {
+                card.isEditing = true;
+                renderCards();
+            }
+        }
+        
+        // 保存编辑
+        function saveEdit(cardId, newText) {
+            const card = cards.find(c => c.id === cardId);
+            if (card) {
+                card.text = newText;
+                card.isEditing = false;
+                saveCards();
+                renderCards();
+            }
+        }
+        
+        // 取消编辑
+        function cancelEdit(cardId) {
+            const card = cards.find(c => c.id === cardId);
+            if (card) {
+                card.isEditing = false;
+                renderCards();
+            }
+        }
+        
+        // 删除卡片
+        function deleteCard(cardId) {
+            if (confirm('确定要删除这张卡片吗？')) {
+                cards = cards.filter(card => card.id !== cardId);
+                saveCards();
+                renderCards();
+            }
+        }
+        
+        // 复制到剪贴板
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification();
+            }).catch(err => {
+                console.error('复制失败:', err);
+                // 降级方案：使用旧方法复制
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showNotification();
+                } catch (err) {
+                    console.error('降级复制也失败:', err);
+                }
+                document.body.removeChild(textArea);
+            });
+        }
+        
+        // 显示通知
+        function showNotification() {
+            notificationEl.classList.add('show');
+            setTimeout(() => {
+                notificationEl.classList.remove('show');
+            }, 2000);
+        }
+        
+        // 保存卡片数据到本地存储
+        function saveCards() {
+            localStorage.setItem('cards', JSON.stringify(cards));
+        }
+    </script>
+</body>
+</html>
